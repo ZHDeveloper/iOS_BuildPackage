@@ -2,12 +2,13 @@
 import os,sys,getopt
 import subprocess
 import shutil
-from enum import Enum
+import requests
 
 tips = '''
 Usage: python3 build_package.py [command] [arguments]
 
 Command:
+-u              Optional,Upload ipa to pgyer
 -s              Optional,Xcode project's scheme name.
 -c              Optional,Realease or Debug,default is Realease.
 -o              Optional,AppStore , AdHoc, Enterprise or Development default is Development.
@@ -72,6 +73,9 @@ ExportOptions = {
 '''
 }
 
+# 编译存放的文件目录
+build_path = "./build"
+
 def build_ipa(scheme_name="",config="Debug",export_option="Development"):
     
     dirs = os.listdir(".")
@@ -96,8 +100,6 @@ def build_ipa(scheme_name="",config="Debug",export_option="Development"):
     if len(scheme_name) == 0:
         print("Cannot find the scheme, please confirm whether the scheme is correct,or use -h to see more.")
         os._exit(0)
-
-    build_path = "./build"
 
     # 清空build文件夹
     if os.path.exists(build_path):
@@ -127,10 +129,51 @@ def build_ipa(scheme_name="",config="Debug",export_option="Development"):
     except Exception as error:
         os._exit(0)
 
+def upload_ipa():
+
+    ipa_path = ""
+
+    try:
+        files = os.listdir(build_path)
+        for file in files:
+            if file.find(".ipa") >= 0 :
+                ipa_path = file
+
+        if len(ipa_path) == 0:
+            print("ipa file does not exist, please compile the project first.")
+            return
+        
+    except Exception as identifier:
+        print("ipa file does not exist, please compile the project first")
+        return
+
+    url = "https://qiniu-storage.pgyer.com/apiv1/app/upload"
+
+    # 需要从蒲公英官网获取
+    data = {
+        "uKey": "d5dfd81cf2f62fb65e6e67f0bed034de",
+        "_api_key": "51f5737e29e008c857053467a0d618b3",
+    }
+    files = {
+        "file": open(ipa_path,"rb")
+    }
+    print("😊  😊  😊  😊  😊  😊  Uploading... 😊  😊  😊  😊  😊  😊")
+    resp = requests.post(url,data=data,files=files)
+    try:
+        json = resp.json()
+        if json["code"] == 0:
+            print("🎉  🎉  🎉  🎉  🎉  🎉   Uploaded Successfully!!!  🎉  🎉  🎉  🎉  🎉  🎉")
+        else:
+            print("❌  ❌  ❌  ❌  ❌  ❌ Uploaded Failued!!! ❌  ❌  ❌  ❌  ❌  ❌")
+            print(json["message"])
+    except Exception as error:
+        print("❌  ❌  ❌  ❌  ❌  ❌ Uploaded Failued!!! ❌  ❌  ❌  ❌  ❌  ❌")
+        print(error)
+
 if __name__ == "__main__":
 
     try:
-        opts, args = getopt.getopt(sys.argv[1:],"hs:c:o:",["help","scheme=","config=","option="])
+        opts, args = getopt.getopt(sys.argv[1:],"hs:c:o:u",["help","scheme=","config=","option=","upload"])
 
         scheme_name = ""
         config = "Debug"
@@ -148,12 +191,16 @@ if __name__ == "__main__":
                 else:
                     print(tips)
                     os._exit(0)
-            elif name in ("-o","option"):
+            elif name in ("-o","--option"):
                 if value in ("AppStore","AdHoc","Enterprise","Development"):
                     export_option = value
                 else:
                     print(tips)
                     os._exit(0)
+            
+            elif name in ("-u","--upload"):
+                upload_ipa()
+                os._exit(0)
 
         build_ipa(scheme_name,config,export_option)
 
