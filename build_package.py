@@ -8,9 +8,9 @@ tips = '''
 Usage: python3 build_package.py [command] [arguments]
 
 Command:
--u              Optional,Upload ipa to pgyer
+-u              Optional,AppStore , Pgyer
 -s              Optional,Xcode project's scheme name.
--c              Optional,Realease or Debug,default is Realease.
+-c              Optional,Release or Debug,default is Realease.
 -o              Optional,AppStore , AdHoc, Enterprise or Development default is Development.
 '''
 
@@ -129,7 +129,7 @@ def build_ipa(scheme_name="",config="Debug",export_option="Development"):
     except Exception as error:
         os._exit(0)
 
-def upload_ipa():
+def upload_to_pgyer():
 
     ipa_path = ""
 
@@ -137,7 +137,7 @@ def upload_ipa():
         files = os.listdir(build_path)
         for file in files:
             if file.find(".ipa") >= 0 :
-                ipa_path = file
+                ipa_path = build_path + "/" + file
 
         if len(ipa_path) == 0:
             print("ipa file does not exist, please compile the project first.")
@@ -170,14 +170,49 @@ def upload_ipa():
         print("❌  ❌  ❌  ❌  ❌  ❌ Uploaded Failued!!! ❌  ❌  ❌  ❌  ❌  ❌")
         print(error)
 
+def upload_to_app_store():
+
+    ipa_path = ""
+
+    try:
+        files = os.listdir(build_path)
+        for file in files:
+            if file.find(".ipa") >= 0 :
+                ipa_path =  build_path + "/" + file
+
+        if len(ipa_path) == 0:
+            print("ipa file does not exist, please compile the project first.")
+            os._exit(0)
+        
+    except Exception as identifier:
+        print("ipa file does not exist, please compile the project first")
+        os._exit(0)
+
+
+    altool = "/Applications/Xcode.app/Contents/Applications/Application Loader.app/Contents/Frameworks/ITunesSoftwareService.framework/Versions/A/Support/altool"
+
+    user = "admin@66boss.com"
+    password = "gtdp-fhcf-tlnh-rgjw"
+
+    try:
+        # subprocess.check_call([altool,"-v","-f",ipa_path,"-t","ios","-u",user,"-p",password,"--output-format","xml"])
+        subprocess.check_call([altool,"--upload-app","-f",ipa_path,"-t","ios","-u",user,"-p",password,"--output-format","xml"])
+        print("🎉  🎉  🎉  🎉  🎉  🎉   Uploaded Successfully!!!  🎉  🎉  🎉  🎉  🎉  🎉")
+    except Exception as er:
+        print("❌  ❌  ❌  ❌  ❌  ❌ Uploaded Failued!!! ❌  ❌  ❌  ❌  ❌  ❌")
+        os._exit(0)
+    
+
 if __name__ == "__main__":
 
     try:
-        opts, args = getopt.getopt(sys.argv[1:],"hs:c:o:u",["help","scheme=","config=","option=","upload"])
+        opts, args = getopt.getopt(sys.argv[1:],"hs:c:o:u:",["help","scheme=","config=","option=","upload"])
 
         scheme_name = ""
         config = "Debug"
         export_option = "Development"
+
+        upload_platform = ""
 
         for name, value in opts:
             if name in ("-h","--help"):
@@ -189,20 +224,31 @@ if __name__ == "__main__":
                 if value in ("Release","Debug"):
                     config = value 
                 else:
+                    print("+++++")
                     print(tips)
                     os._exit(0)
             elif name in ("-o","--option"):
                 if value in ("AppStore","AdHoc","Enterprise","Development"):
                     export_option = value
                 else:
+                    print("=====")
                     print(tips)
                     os._exit(0)
             
             elif name in ("-u","--upload"):
-                upload_ipa()
-                os._exit(0)
+                if value in ("AppStore","Pgyer"):
+                    upload_platform = value
+                else:
+                    print("-----")
+                    print(tips)
+                    os._exit(0)
 
         build_ipa(scheme_name,config,export_option)
+
+        if upload_platform == "AppStore":
+            upload_to_app_store()
+        elif upload_platform == "Pgyer":
+            upload_to_pgyer()
 
     except BaseException as err:
         print(tips)
